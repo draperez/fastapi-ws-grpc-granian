@@ -1,18 +1,45 @@
 # Granian with FastAPI
 
-Testing Granian Rust server for Python with FastAPI.
+FastAPI application with WS and gRPC using Granian Rust server for Python.
 
-Debugging works using `debugpy` and `granian` (see `.vscode/launch.json`).
+## Project Structure
 
-Another way to run the server:
-
-```bash
-uv run granian --interface asgi --ssl-certificate ~/dev-certs/cert.pem --ssl-keyfile ~/dev-certs/key.pem main:app
+```
+├── src/
+│   ├── api/               # FastAPI routes and endpoints
+│   ├── grpc/              # gRPC service implementation
+│   │   ├── generated/     # Auto-generated protobuf files
+│   │   └── service.py     # gRPC service logic
+│   ├── websocket/         # WebSocket connection management
+│   ├── app.py             # Main FastAPI application
+│   └── config.py          # Application configuration
+├── proto/                 # Protocol buffer definitions
+├── static/                # Static web assets
+├── scripts/               # Utility scripts
+├── tests/                 # Test suite
+└── main_new.py           # Application entry point
 ```
 
-Devcontainer has created a self signed certificate for HTTPS at `~/dev-certs/cert.pem` and `~/dev-certs/cert.key`.
+## Running the Server
 
 > [WARNING] Certificates are mandatory if we want to use HTTP/2, otherwise HTTP/1.1 will be used.
+
+### For development and debugging
+
+Just press `F5` in VSCode to start the server with debugging enabled (see `.vscode/launch.json`).
+
+### Using Granian directly
+
+```bash
+uv run granian --interface asgi --ssl-certificate ~/dev-certs/cert.pem --ssl-keyfile ~/dev-certs/key.pem src.app:app
+```
+
+### Running main.py
+
+```bash
+uv run python main.py
+```
+
 
 ## Calling gRPC service
 
@@ -52,8 +79,34 @@ grpcurl -d '{"name": "Mundua"}' -plaintext localhost:8001 myservice.MyService.My
 
 ## Create gRPC PB2 files
 
+Use the provided script to generate protobuf files:
+
 ```bash
-python -m grpc_tools.protoc --python_out=. --grpc_python_out=. --proto_path=./proto myservice.proto
+uv run python scripts/generate_grpc.py
 ```
 
-After that `myservice_pb2.py` and `myservice_pb2_grpc.py` files will be created in the current directory.
+Or manually:
+
+```bash
+python -m grpc_tools.protoc --python_out=src/grpc/generated --grpc_python_out=src/grpc/generated --proto_path=./proto myservice.proto
+```
+
+After that `myservice_pb2.py` and `myservice_pb2_grpc.py` files will be created in `src/grpc/generated/`.
+
+## Development
+
+### Installing dependencies
+
+```bash
+# Install main dependencies
+uv sync
+
+# Install development dependencies
+uv sync --extra dev
+```
+
+### Running tests
+
+```bash
+uv run pytest
+```

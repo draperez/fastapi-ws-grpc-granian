@@ -1,64 +1,47 @@
+"""
+Main entry point for the Granian FastAPI application.
+"""
 
-import asyncio
-import logging
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from ws_connection_manager import WSConnectionManager
-from grpc_service import serve_grpc
-
-logging.basicConfig(level=logging.DEBUG)
-
-logger = logging.getLogger(__name__)
-
-ws_manager = WSConnectionManager()
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    logger.info("Starting gRPC server...")
-    grpc_task = asyncio.create_task(serve_grpc())
-    yield
-    logger.info("Shutting down gRPC server...")
-    grpc_task.cancel()
-    await ws_manager.clear_all_connections()
-
-app = FastAPI(lifespan=lifespan)
-
-app.mount("/static", StaticFiles(directory="static"), name="static")
+import signal
+import sys
+from src.app import app
+from src.config import HOST, PORT, SSL_CERT_PATH, SSL_KEY_PATH
 
 
-@app.get("/")
-async def root_ep():
-    return FileResponse("static/index.html")
+def signal_handler(signum, frame):
+    """Handle shutdown signals gracefully"""
+    print(f"\nReceived signal {signum}. Shutting down gracefully...")
+    sys.exit(0)
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    message = {
-        "client": websocket.client.port,
-        "data": "Connected"
-    }
-    await ws_manager.broadcast(message)
 
-    await ws_manager.connect(websocket)
-    await ws_manager.send_message_to_client(websocket, {
-        "your_client": websocket.client.port,
-        "data": "Welcome to the WebSocket server!",
-        "client": "server"
-    })
-
-    try:
-        data = ""
-        while data != "exit":
-            data = await websocket.receive_text()
-            if data == "exit":
-                message["data"] = "Bye!"
-                await ws_manager.send_message_to_client(websocket, message)
-            else:
-                message["data"] = data
-                await ws_manager.broadcast(message)
-    except WebSocketDisconnect:
-        ws_manager.disconnect(websocket)
-        message["data"] = "Disconnected"
-        await ws_manager.broadcast(message)
-
+if __name__ == "__main__":
+    import granian
+    from granian.constants import Interfaces
+    
+    # Register signal handlers for graceful shutdown
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    # Check if SSL certificates exist
+    if SSL_CERT_PATH.exists() and SSL_KEY_PATH.exists():
+        print(f"Starting Granian server with SSL on {HOST}:{PORT}")
+        print(f"Using certificates: {SSL_CERT_PATH} and {SSL_KEY_PATH}")
+        
+        granian.Granian(
+            "src.app:app",
+            address=HOST,
+            port=PORT,
+            interface=Interfaces.ASGI,
+            ssl_cert=SSL_CERT_PATH,
+            ssl_key=SSL_KEY_PATH,
+        ).serve()
+    else:
+        print(f"Starting Granian server without SSL on {HOST}:{PORT}")
+        print("Warning: SSL certificates not found, running in insecure mode")
+        
+        granian.Granian(
+            "src.app:app",
+            address=HOST,
+            port=PORT,
+            interface=Interfaces.ASGI,
+        ).serve()

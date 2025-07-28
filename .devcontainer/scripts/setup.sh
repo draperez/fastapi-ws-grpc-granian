@@ -10,7 +10,7 @@ fi
 
 echo "Installing Python packages"
 if [ -f pyproject.toml ]; then 
-    uv sync
+    uv sync --extra dev;
 elif [ -f requirements.txt ]; then 
     uv pip install -r requirements.txt; 
 fi

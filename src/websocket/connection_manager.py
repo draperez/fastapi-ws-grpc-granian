@@ -14,8 +14,12 @@ class WSConnectionManager:
 
     async def clear_all_connections(self):
         for connection in self.active_connections:
-            await self.send_message_to_client(connection, "Server is shutting down, closing connection.")
-            await connection.close()
+            try:
+                await self.send_message_to_client(connection, {"message": "Server is shutting down, closing connection."})
+                await connection.close()
+            except Exception as e:
+                # Connection might already be closed
+                pass
         self.active_connections.clear()
 
     async def send_message_to_client(self, connection: WebSocket, message: dict):
