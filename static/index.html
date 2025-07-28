@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>WebSocket Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
+</head>
+
+<body class="container">
+    <header class="my-4">
+        <h1>WebSocket Test</h1>
+    </header>
+    <main>
+        <div class="btn-group mb-3" role="group" aria-label="WebSocket Connection Controls">
+            <input type="radio" class="btn-check" name="connectionMode" id="disconnectedRadio" checked onchange="manage_connection()">
+            <label class="btn btn-outline-primary" for="disconnectedRadio">Disconnected</label>
+            <input type="radio" class="btn-check" name="connectionMode" id="connectedRadio" onchange="manage_connection()">
+            <label class="btn btn-outline-primary" for="connectedRadio">Connected</label>
+        </div>
+        <form action="" onsubmit="sendMessage(event)">
+            <div class="input-group mb-3">
+                <input type="text" id="messageText" class="form-control" autocomplete="off" placeholder="Type a message..." />
+                <button class="btn btn-primary" type="submit" id="sendButton" disabled>Send</button>
+            </div>
+        </form>
+        <div class="card">
+            <div class="card-header">
+                <h2 class="m-0">Messages</h2>
+            </div>
+            <ul class="list-group list-group-flush" id="messages">
+                <!-- Messages will be appended here -->
+            </ul>
+        </div>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q"
+        crossorigin="anonymous"></script>
+    <script>
+        var ws;
+        var yourClient = null;
+        function manage_connection() {
+            var connected = document.getElementById("connectedRadio").checked;
+            var sendButton = document.getElementById("sendButton");
+            var messageText = document.getElementById("messageText");
+            if (connected) {
+                connect();
+                sendButton.disabled = false;
+                messageText.disabled = false;
+                messageText.focus();
+            } else {
+                disconnect();
+                sendButton.disabled = true;
+                messageText.disabled = true;
+            }
+        }
+        function connect() {
+            var wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+            ws = new WebSocket(`${wsProtocol}://localhost:8000/ws`);
+
+            ws.onmessage = (event) => {
+                let jsonData = JSON.parse(event.data);
+                console.log(jsonData);
+                if (jsonData.your_client) {
+                    yourClient = jsonData.your_client;
+                }
+                var messages = document.getElementById("messages");
+                var newMessage = document.createElement("li");
+                newMessage.className = "list-group-item";
+
+                if (jsonData.client !== yourClient) {
+                    var newClient = document.createElement("span");
+                    newClient.className = jsonData.client == yourClient ? "badge bg-secondary me-2" : "badge bg-dark me-2";
+
+                    newClient.textContent = jsonData.client;
+                    newMessage.appendChild(newClient);
+                } else {
+                    newMessage.classList.add("text-end");
+                    newMessage.classList.add("list-group-item-secondary");
+                }
+
+                var content = document.createTextNode(jsonData.data);
+                newMessage.appendChild(content);
+                messages.appendChild(newMessage);
+            };
+        };
+        function disconnect() {
+            ws.close();
+        };
+        function sendMessage(event) {
+            var input = document.getElementById("messageText");
+            ws.send(input.value);
+            input.value = "";
+            event.preventDefault();
+        }
+    </script>
+</body>
+
+</html>

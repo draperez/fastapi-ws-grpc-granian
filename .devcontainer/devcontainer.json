@@ -1,0 +1,25 @@
+{
+    "name": "Python",
+    "image": "registry.gitlab.com/mu-bd-ce/devcontainers/python:latest",
+    "forwardPorts": [
+        8000, // Port for FastAPI
+        8001  // Port for gRPC server
+    ],
+    "features": {
+        "ghcr.io/va-h/devcontainers-features/uv:1": {}
+    },
+    // Command to run after the container is created to set up the environment.
+    "postCreateCommand": "chmod +x .devcontainer/scripts/setup.sh && .devcontainer/scripts/setup.sh ${containerEnv:HOME}",
+    "customizations": {
+        "vscode": {
+            "settings": {
+                // Path to the Python interpreter in the virtual environment.
+                "python.defaultInterpreterPath": ".venv/bin/python"
+            },
+            "extensions": [
+                "streetsidesoftware.code-spell-checker",
+                "streetsidesoftware.code-spell-checker-spanish"
+            ]
+        }
+    }
+}
